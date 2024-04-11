@@ -8,6 +8,9 @@ from renderer import renderField,show
 
 bnoise = Field(data_path+"bnoise.ply")
 
-renderField(bnoise,'0')
-renderField(bnoise,'1')
+renderField(bnoise,'field')
+renderField(bnoise,'original faces',render='faces')
+bnoise.faces=[]
+bnoise.calculate_faces()
+renderField(bnoise,'calculated faces',render='faces')
 show()
