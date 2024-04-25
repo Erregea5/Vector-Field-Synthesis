@@ -1,20 +1,23 @@
 from scipy.spatial import Delaunay
 import numpy as np
+from copy import deepcopy
+from renderer import renderLineChart
 
 class vector:
     def __init__(self,arr) -> None:
         self.pos=arr[0:3] if len(arr)>=3 else None
         self.dir=arr[3:6] if len(arr)>=6 else None
-        self.jacobian=[arr[6:9],arr[9:12],arr[12:15]] if len(arr)>=15 else None
+        self.jacobian=np.array(arr[6:15]).reshape((3,3)) if len(arr)>=15 else None
     
     def copy(self):
         if self.pos:
             if self.dir:
-                if self.jacobian:
-                    jacobian=[*self.jacobian[0],*self.jacobian[1],*self.jacobian[2]]
-                    return vector([*self.pos,*self.dir,*jacobian])
-                return vector([*self.pos,*self.dir])
-            return vector(self.pos)
+                if self.jacobian is not None:
+                    jacobian=deepcopy(self.jacobian)
+                    # jacobian=[*deepcopy(self.jacobian[0]),*deepcopy(self.jacobian[1]),*deepcopy(self.jacobian[2])]
+                    return vector([*deepcopy(self.pos),*deepcopy(self.dir),*deepcopy(jacobian[0]),*deepcopy(jacobian[1]),*deepcopy(jacobian[2])])
+                return vector([*deepcopy(self.pos),*deepcopy(self.dir)])
+            return vector([*deepcopy(self.pos)])
         return vector()
 
     @staticmethod
@@ -115,36 +118,63 @@ class Field:
 
         self.edges=edges
         return self
-    
+
     def calculate_jacobian(self):
-        def calculate(face):
-            jacobian=[[0]*3 for _ in range(3)]
-            P=np.zeros((4,3))
+        cnt=0
+        vcnt=0
+        line=[]
+        def calculate(face,truncated=False):
+            truncate=lambda x:x
+            if truncated:
+                truncate=lambda x:round(x,3)
+            
+            P=np.zeros((3,4))
             V=np.zeros((3,3))
             for i in range(3):
-                P[3,i]=1
+                P[i,3]=1
                 for j in range(3):
-                    P[j,i]=self.vertices[face[i]].pos[j]
+                    P[i,j]=truncate(self.vertices[face[i]].pos[j])
             
             for i in range(3):
                 for j in range(3):
-                    V[j,i]=self.vertices[face[i]].dir[j]
+                    V[i,j]=truncate(self.vertices[face[i]].dir[j])
+        
+            solution=np.linalg.lstsq(P,V,rcond=None)
+
+            # dP=np.zeros((2,2))
+            # dV=np.zeros((2,2))
+            # for i in range(2):
+            #     for j in range(2):
+            #         dP[j,i]=self.vertices[face[i]].pos[j]-self.vertices[face[2]].pos[j]
+            #         dV[j,i]=self.vertices[face[i]].dir[j]-self.vertices[face[2]].dir[j]
+
+            # solution1=np.linalg.solve(dP.T,dV.T)
+            faces=[self.vertices[v] for v in face]
+            A_T=solution[0]
+            nonlocal cnt
+            nonlocal vcnt
+            limit=12
+            line.append(max(abs(A_T.max()),abs(A_T.min())))
+            if abs(A_T.max())>limit or abs(A_T.min())>limit:
+                if truncated: #abandon
+                    cnt+=1
+                    return None
+                else:
+                    vcnt+=1
+                    c= calculate(face,True)
+                    # if c is not None:
+                    #     print('c: ',c)
+
             
-            A_T=np.linalg.lstsq(P.T,V.T,rcond=None)[0]
-            for i in range(3):
-                for j in range(3):
-                    jacobian[i][j]=A_T[i][j]
-            
+            jacobian=A_T[:3,:3].T
             return jacobian
 
-        face_count=[0]*len(self.vertices)
+        face_count=np.zeros((len(self.vertices)))
         def set_jacobian(v1,jacobian):
-            cur=self.vertices[v1].jacobian
-            if cur:
-                cur[0][0]+=jacobian[0][0]
-                cur[1][0]+=jacobian[1][0]
-                cur[0][1]+=jacobian[0][1]
-                cur[1][1]+=jacobian[1][1]
+            if jacobian is None:
+                return
+            if self.vertices[v1].jacobian is not None:
+                self.vertices[v1].jacobian+=jacobian
             else: 
                 self.vertices[v1].jacobian=jacobian
             face_count[v1]+=1
@@ -152,27 +182,28 @@ class Field:
         if len(self.faces)==0:
             self.calculate_faces()
         for face in self.faces:
-            jacobian=calculate(face)
+            jacobian=calculate(face,True)
             for v in face:
                 set_jacobian(v,jacobian)
         
         for v1 in range(len(self.vertices)):
             v=self.vertices[v1]
-            if v.jacobian:
-                v.jacobian[0][0]/=face_count[v1]
-                v.jacobian[1][0]/=face_count[v1]
-                v.jacobian[0][1]/=face_count[v1]
-                v.jacobian[1][1]/=face_count[v1]
+            if v.jacobian is not None:
+                v.jacobian/=face_count[v1]
+        # renderLineChart([line],"jacobian values")
         return self
 
     @staticmethod
     def get_Error(calculated,expected):
         err_field=Field()
         err_field.faces=calculated.faces
+        err_list=[0]*len(calculated.vertices)
         err=0
         for truth,pred in zip(calculated.vertices,expected.vertices):
             err_vector=vector.difference(truth,pred)
-            err+=sum([x**2 for x in err_vector.dir])
+            cur_err=sum([x**2 for x in err_vector.dir])
+            err+=cur_err
+            err_list.append(cur_err)
             err_field.vertices.append(err_vector)
         err/=len(calculated.vertices)
-        return err_field,err
+        return err_field,err,err_list

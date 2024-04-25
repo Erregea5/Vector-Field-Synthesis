@@ -4,19 +4,19 @@
 dir1 = (x)*pos1 +c 
 dir2 = (x)*pos2 +c
 dir3 = (x)*pos3 +c
-v_x0 = ax0+by0+cz0+d
-v_y0 = ex0+fy0+gz0+h
-v_z0 = ix0+jy0+kz0+l
-v_x1 = ax1+by1+cz1+d
-v_y1 = ex1+fy1+gz1+h
-v_z1 = ix1+jy1+kz1+l
-v_x2 = ax2+by2+cz2+d
-v_y2 = ex2+fy2+gz2+h
-v_z2 = ix2+jy2+kz2+l
+v_0x = ax0+by0+cz0+d
+v_0y = ex0+fy0+gz0+h
+v_0z = ix0+jy0+kz0+l
+v_1x = ax1+by1+cz1+d
+v_1y = ex1+fy1+gz1+h
+v_1z = ix1+jy1+kz1+l
+v_2x = ax2+by2+cz2+d
+v_2y = ex2+fy2+gz2+h
+v_2z = ix2+jy2+kz2+l
 
-v_x0 = ax0+by0+cz0+d
-v_x1 = ax1+by1+cz1+d
-v_x2 = ax2+by2+d
+v_0x = ax0+by0+cz0+d
+v_1x = ax1+by1+cz1+d
+v_2x = ax2+by2+d
 
 [row of A(x)][col of P(0)]=
 A=f1 .. fn
@@ -49,6 +49,8 @@ A= [F1 .. ]
 
 P.T*A.T= V.T
 AP=V
+
+A(P_i-P_j)=V_i-V_j
 ```
 
 ### Vector Approximation

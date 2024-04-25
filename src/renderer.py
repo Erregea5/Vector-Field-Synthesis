@@ -20,7 +20,7 @@ def renderContours(z,title):
   x=np.linspace(0,1,len(z))
 
   figures.append(plt.figure(figsize=(4, 4)))
-  plt.contourf(x,x,z)
+  plt.contourf(x,x,z,levels=100)
   plt.colorbar()
   plt.xlabel('X-axis')
   plt.ylabel('Y-axis')
@@ -60,8 +60,8 @@ def renderJacobian(field,title,color=False):
   x=np.zeros(len(vertices))
   y,dvx_dx,dvy_dx,dvx_dy,dvy_dy=x.copy(),x.copy(),x.copy(),x.copy(),x.copy()
   func=lambda x:x
-  if not color:
-    func=vector.normed
+  # if not color:
+  #   func=vector.normed
   for i in range(len(vertices)):
     x[i]=vertices[i].pos[0]
     y[i]=vertices[i].pos[1]
@@ -119,20 +119,35 @@ def renderField(field,title,render='vertices'):
   elif render=='jacobian-color':
     renderJacobian(field,title,True)
 
-def renderLineChart(values,title,labels):
+def renderLineChart(values:list[list],title,labels=None):
   figures.append(plt.figure(figsize=(4, 4)))
-  for graph,label in zip(values,labels):
-    plt.plot(graph,label=label)
+  if labels is None:
+    for graph in values:
+      plt.plot(graph)
+  else:
+    for graph,label in zip(values,labels):
+      plt.plot(graph,label=label)
   plt.legend()
   plt.xlabel('X-axis')
   plt.ylabel('Y-axis')
   plt.title(title)
-  plt.axis('equal')
+  # plt.axis('equal')
 
-def show():
-  plt.show()
+def renderHistogram(values,title,buckets=10):
+  figures.append(plt.figure(figsize=(4, 4)))
+  plt.hist(values,bins=buckets)
+  plt.legend()
+  plt.xlabel('X-axis')
+  plt.ylabel('Y-axis')
+  plt.title(title)
 
 def close():
   for figure in figures:
     plt.close(figure)
   figure=[]
+
+def show():
+  plt.show(block=False)
+  plt.pause(0.001) # Pause for interval seconds.
+  input("hit[enter] to end.")
+  close()
