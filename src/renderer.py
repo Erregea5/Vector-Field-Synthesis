@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from vector_field import vector
 
 figures=[]
 
@@ -133,10 +132,9 @@ def renderLineChart(values:list[list],title,labels=None):
   plt.title(title)
   # plt.axis('equal')
 
-def renderHistogram(values,title,buckets=10):
+def renderHistogram(values,title,buckets=50):
   figures.append(plt.figure(figsize=(4, 4)))
   plt.hist(values,bins=buckets)
-  plt.legend()
   plt.xlabel('X-axis')
   plt.ylabel('Y-axis')
   plt.title(title)

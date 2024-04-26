@@ -149,7 +149,7 @@ class Field:
             #         dV[j,i]=self.vertices[face[i]].dir[j]-self.vertices[face[2]].dir[j]
 
             # solution1=np.linalg.solve(dP.T,dV.T)
-            faces=[self.vertices[v] for v in face]
+            # faces=[self.vertices[v] for v in face]
             A_T=solution[0]
             nonlocal cnt
             nonlocal vcnt
@@ -161,7 +161,7 @@ class Field:
                     return None
                 else:
                     vcnt+=1
-                    c= calculate(face,True)
+                    return calculate(face,True)
                     # if c is not None:
                     #     print('c: ',c)
 

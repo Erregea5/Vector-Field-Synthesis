@@ -25,7 +25,7 @@ def main(original,e):
     field.faces=expected.faces
     return field
 
-  percent_present=.05
+  percent_present=e
   percent_jacobian_present=e#.05
 
   sparse = copy_field()
@@ -47,13 +47,13 @@ def main(original,e):
       #otherwise some points without direction also have jacobian
       #if indented and True no points have jacobian
       #if not true and indented its random
-    if random.random()>percent_jacobian_present:
+    # if random.random()>percent_jacobian_present:
       sparse_j.vertices[-1].jacobian=None
       sparse_jN.vertices[-1].jacobian=None
 
   # for i in range(len(sparse_j.vertices)):
   #   dist=100
-  #   r=False#sparse_j.vertices[i].dir is not None
+  #   r=sparse_j.vertices[i].dir is not None
   #   # for j in range(len(sparse_j.vertices)):
   #   #   if sparse_j.vertices[j].dir:
   #   #     r=True
@@ -73,7 +73,6 @@ def main(original,e):
   reconstructed_j=vectorSynthesis(sparse_j,'merged',expected)
   reconstructed_jN=vectorSynthesis(sparse_jN,'Nguyens')
 
-  _,no_err=Field.get_Error(expected,expected)
   error_field,err,err_list=Field.get_Error(reconstructed,expected)
   error_field_j,err_j,err_list_j=Field.get_Error(reconstructed_j,expected)
   error_field_jN,err_jN,err_list_jN=Field.get_Error(reconstructed_jN,expected)
@@ -84,10 +83,10 @@ def main(original,e):
 
   def render(i=''):
     renderField(expected,i+' original')
-    # renderField(expected,i+' edges','faces')
+    renderField(expected,i+' edges','faces')
     renderField(sparse_j,i+' sparse')
     renderField(sparse_j,i+' sparse jacobians','jacobian')
-    # renderField(reconstructed,i+' reconstructed without jacobian')
+    renderField(reconstructed,i+' reconstructed without jacobian')
     renderField(reconstructed_j,i+' reconstructed with jacobian')
     renderField(reconstructed_jN,i+' reconstructed with Nguyen\'s method')
     # renderField(error_field,i+' regular error','vertices-color')
@@ -105,15 +104,16 @@ if __name__=='__main__':
   original = Field(data_path+"bnoise.ply")
   lj,lr,ln=[],[],[]
   # random.seed(1)
-  # main(original,1)[3]()
+  # main(original,.15)[3]()
   # exit()
   i=0
   try:
     while True: 
       i+=1
-      random.seed(i)
-      print('seed: ',i,2/(i+1))
-      r,j,n,render=main(original,2/(1+i))
+      random.seed(1)
+      percent_present=.02+.03*i
+      print('iteration: ', i)
+      r,j,n,render=main(original,percent_present)
       lr.append(r)
       lj.append(j)
       ln.append(n)
@@ -128,6 +128,8 @@ if __name__=='__main__':
     print('Nguyen\'s average:',sum(ln)/len(ln))
     print(len(lj),'runs ended')
   show()
+
+# show methods accross different 
 
 #from results it appears that jacobian is comparable to nguyen 
 #at points with values+jacobian but loses at points with just jacobian
