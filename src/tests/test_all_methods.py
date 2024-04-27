@@ -2,22 +2,15 @@ import os,sys
 src_path=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_path=os.path.dirname(src_path)+'\\data\\'
 sys.path.append(src_path)
-from matplotlib import pyplot as plt
+import time
 
 from vector_field import vector,Field
 from renderer import renderField,renderLineChart,renderHistogram,show,close
 from synthesis import vectorSynthesis
 import random
 
-def main(original,e):
-  expected=Field()
-  percent_vert_present=.15
-  for vertex in original.vertices:
-    if random.random()<percent_vert_present:
-      expected.vertices.append(vertex.copy())
-
-  expected.calculate_jacobian()
-  expected.calculate_edges()
+def main(original,percent_present,seed):
+  expected=original
 
   def copy_field():
     field=Field()
@@ -25,31 +18,31 @@ def main(original,e):
     field.faces=expected.faces
     return field
 
-  percent_present=e
-  percent_jacobian_present=e#.05
-
   sparse = copy_field()
   sparse_j = copy_field()
-  sparse_jN = copy_field()
+  sparse_jr = copy_field()
+  sparse_N = copy_field()
 
   for vertex in expected.vertices:
     sparse.vertices.append(vertex.copy())
     sparse_j.vertices.append(vertex.copy())
-    sparse_jN.vertices.append(vertex.copy())
+    sparse_jr.vertices.append(vertex.copy())
+    sparse_N.vertices.append(vertex.copy())
     sparse.vertices[-1].jacobian=None
     
     if random.random()>percent_present:
       sparse.vertices[-1].dir=None
       sparse_j.vertices[-1].dir=None
-      sparse_jN.vertices[-1].dir=None
-    
-      #if True only points with direction have jacobian, 
-      #otherwise some points without direction also have jacobian
-      #if indented and True no points have jacobian
-      #if not true and indented its random
-    # if random.random()>percent_jacobian_present:
+      sparse_jr.vertices[-1].dir=None
+      sparse_N.vertices[-1].dir=None
+
       sparse_j.vertices[-1].jacobian=None
-      sparse_jN.vertices[-1].jacobian=None
+      sparse_N.vertices[-1].jacobian=None
+
+  random.seed(seed+1)
+  for i in range(len(expected.vertices)):
+    if random.random()>percent_present:
+      sparse_jr.vertices[i].jacobian=None
 
   # for i in range(len(sparse_j.vertices)):
   #   dist=100
@@ -67,19 +60,30 @@ def main(original,e):
   #       r=True
   #   if random.random()>percent_jacobian_present or not r:
   #     sparse_j.vertices[i].jacobian=None
-  #     sparse_jN.vertices[i].jacobian=None
+  #     sparse_N.vertices[i].jacobian=None
 
+  time0=time.time()
   reconstructed=vectorSynthesis(sparse)
-  reconstructed_j=vectorSynthesis(sparse_j,'merged',expected)
-  reconstructed_jN=vectorSynthesis(sparse_jN,'Nguyens')
+  dtime=time.time()-time0
+  time0=time.time()
+  reconstructed_j=vectorSynthesis(sparse_j,'merged')
+  dtime_j=time.time()-time0
+  time0=time.time()
+  reconstructed_jr=vectorSynthesis(sparse_jr,'merged')
+  dtime_jr=time.time()-time0
+  time0=time.time()
+  reconstructed_N=vectorSynthesis(sparse_N,'Nguyens')
+  dtime_N=time.time()-time0
 
   error_field,err,err_list=Field.get_Error(reconstructed,expected)
   error_field_j,err_j,err_list_j=Field.get_Error(reconstructed_j,expected)
-  error_field_jN,err_jN,err_list_jN=Field.get_Error(reconstructed_jN,expected)
+  error_field_jr,err_jr,err_list_jr=Field.get_Error(reconstructed_jr,expected)
+  error_field_N,err_N,err_list_N=Field.get_Error(reconstructed_N,expected)
 
   print('regular error: ',err)
   print('error with jacobian: ',err_j)
-  print('error with  Nguyen\'s method: ',err_jN)
+  print('error with jacobian at random points: ',err_jr)
+  print('error with  Nguyen\'s method: ',err_N)
 
   def render(i=''):
     renderField(expected,i+' original')
@@ -88,60 +92,61 @@ def main(original,e):
     renderField(sparse_j,i+' sparse jacobians','jacobian')
     renderField(reconstructed,i+' reconstructed without jacobian')
     renderField(reconstructed_j,i+' reconstructed with jacobian')
-    renderField(reconstructed_jN,i+' reconstructed with Nguyen\'s method')
+    renderField(reconstructed_N,i+' reconstructed with Nguyen\'s method')
     # renderField(error_field,i+' regular error','vertices-color')
     renderField(error_field_j,i+' error with jacobian','vertices-color')
-    renderField(error_field_jN,i+' error with  Nguyen\'s method','vertices-color')
+    renderField(error_field_N,i+' error with  Nguyen\'s method','vertices-color')
     renderHistogram(err_list_j,i+' jacobian error histogram')
-    renderHistogram(err_list_jN,i+' Nguyen\'s error histogram')
+    renderHistogram(err_list_N,i+' Nguyen\'s error histogram')
     show()
   # render()
-  return err,err_j,err_jN,render
+  return [err,err_j,err_jr,err_N,dtime,dtime_j,dtime_jr,dtime_N],render
 
 
 if __name__=='__main__':
   random.seed(0)
   original = Field(data_path+"bnoise.ply")
-  lj,lr,ln=[],[],[]
+  expected=Field()
+  percent_vert_present=.15
+  for vertex in original.vertices:
+    if random.random()<percent_vert_present:
+      expected.vertices.append(vertex.copy())
+
+  expected.calculate_jacobian()
+  expected.calculate_edges()
+
+  data=[[] for _ in range(8)]
   # random.seed(1)
-  # main(original,.15)[3]()
+  # main(original,.15)[6]()
   # exit()
   i=0
   try:
     while True: 
       i+=1
-      random.seed(1)
-      percent_present=.02+.03*i
+      random.seed(3)
+      percent_present=.01*i
       print('iteration: ', i)
-      r,j,n,render=main(original,percent_present)
-      lr.append(r)
-      lj.append(j)
-      ln.append(n)
-      # if r<j or r<n:
-      #   render(str(i))
+      newdata,render=main(expected,percent_present,3)
+      for j in range(len(newdata)):
+        data[j].append(newdata[j])
       
   except KeyboardInterrupt:
     close()
-    renderLineChart((lr,lj,ln),'Errors',('interp','jacobian','nguyen'))
-    print('regular average:',sum(lr)/len(lr))
-    print('jacobian average:',sum(lj)/len(lj))
-    print('Nguyen\'s average:',sum(ln)/len(ln))
-    print(len(lj),'runs ended')
+    labels=('interp','jacobian','jacobian at random points','nguyen')
+    renderLineChart(data[:4],'Errors',labels)
+    renderLineChart(data[4:],'Calculation Time',labels)
+    run_length=len(data[0])
+    print('regular average:',sum(data[0])/run_length)
+    print('jacobian average:',sum(data[1])/run_length)
+    print('jacobian at random points average:',sum(data[2])/run_length)
+    print('Nguyen\'s average:',sum(data[3])/run_length)
+    print(run_length,'runs ended')
   show()
 
-# show methods accross different 
-
-#from results it appears that jacobian is comparable to nguyen 
-#at points with values+jacobian but loses at points with just jacobian
-
-#debug singular matrix
-#find why interpolation gets the same results sometimes
-#more buckets in color plots
-#indexed seeding
-#histogram of erro
-#n=m info
-#lic
-
+# try on new data sets and smaller intervals
+# fix nguyen's method
+# write methodology of each system
+# add curl and divergence
 
 """
 different controls:

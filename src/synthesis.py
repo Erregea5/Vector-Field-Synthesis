@@ -6,18 +6,20 @@ from renderer import renderField,close,show
 def Nguyens_method(field):
   num_vertices=len(field.vertices)
   num_edges=[0]*num_vertices
-  known_verts=[]
+  known_verts=set()
 
 
   for i in range(num_vertices):
     vec=field.vertices[i]
     if vec.jacobian is not None and vec.dir:
-      known_verts.append(i)
+      known_verts.add(i)
   
   for i in known_verts:
     vec=field.vertices[i]
     neighbors=field.edges[i]
     for j in neighbors:
+      if j in known_verts:
+        continue
       w_ij=field.edges[i][j]
       neighbor=field.vertices[j]
       aproximate_dir=vec.dir+vec.jacobian@(np.array(neighbor.pos)-np.array(vec.pos))
@@ -29,13 +31,10 @@ def Nguyens_method(field):
       num_edges[j]+=1
 
   for i in range(num_vertices):
-    if num_edges[i]>0:
-      field.vertices[i].dir=vector.normed(field.vertices[i].dir)
-
-  for vec in field.vertices:
+    vec=field.vertices[i]
     vec.jacobian=None
-  # close()
-  # renderField(field,'nguyen\'s intermediate')
+    if num_edges[i]>0:
+      vec.dir=vector.normed(vec.dir)
   
 
 def vectorSynthesis(field:Field,method='merged',actual=None)->Field:
@@ -59,24 +58,16 @@ def vectorSynthesis(field:Field,method='merged',actual=None)->Field:
     p_i=np.array(vec.pos)
     h_i=-p_i
     m=1
-    jj=0
+
     for j in edges:
-      jj=j
       vec_j=field.vertices[j]
       w_ij=edges[j]
       p_j=np.array(vec_j.pos)
       h_i+=p_j*w_ij
       for u in range(3):
         A[i*3+u,j*3+u]=w_ij
-      # break
 
-    
     val=vec.jacobian@h_i
-    # equation = (val," = ",field.vertices[jj]," + ",-m,"*",vec)
-    # if val[0]**2+val[1]**2>1:
-    #   print(equation)
-    #   val/=((val**2).sum())**.5
-    # val*=.01
     for u in range(3):
       A[i*3+u,i*3+u]=-m
       b[i*3+u]=val[u]

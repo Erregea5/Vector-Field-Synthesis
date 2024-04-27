@@ -4,21 +4,17 @@ from copy import deepcopy
 from renderer import renderLineChart
 
 class vector:
-    def __init__(self,arr) -> None:
+    def __init__(self,arr=[]) -> None:
         self.pos=arr[0:3] if len(arr)>=3 else None
         self.dir=arr[3:6] if len(arr)>=6 else None
         self.jacobian=np.array(arr[6:15]).reshape((3,3)) if len(arr)>=15 else None
     
     def copy(self):
-        if self.pos:
-            if self.dir:
-                if self.jacobian is not None:
-                    jacobian=deepcopy(self.jacobian)
-                    # jacobian=[*deepcopy(self.jacobian[0]),*deepcopy(self.jacobian[1]),*deepcopy(self.jacobian[2])]
-                    return vector([*deepcopy(self.pos),*deepcopy(self.dir),*deepcopy(jacobian[0]),*deepcopy(jacobian[1]),*deepcopy(jacobian[2])])
-                return vector([*deepcopy(self.pos),*deepcopy(self.dir)])
-            return vector([*deepcopy(self.pos)])
-        return vector()
+        new=vector()
+        new.pos=deepcopy(self.pos)
+        new.dir=deepcopy(self.dir)
+        new.jacobian=deepcopy(self.jacobian)
+        return new
 
     @staticmethod
     def dist(vec1,vec2=None)->float:
@@ -120,9 +116,6 @@ class Field:
         return self
 
     def calculate_jacobian(self):
-        cnt=0
-        vcnt=0
-        line=[]
         def calculate(face,truncated=False):
             truncate=lambda x:x
             if truncated:
@@ -141,31 +134,12 @@ class Field:
         
             solution=np.linalg.lstsq(P,V,rcond=None)
 
-            # dP=np.zeros((2,2))
-            # dV=np.zeros((2,2))
-            # for i in range(2):
-            #     for j in range(2):
-            #         dP[j,i]=self.vertices[face[i]].pos[j]-self.vertices[face[2]].pos[j]
-            #         dV[j,i]=self.vertices[face[i]].dir[j]-self.vertices[face[2]].dir[j]
-
-            # solution1=np.linalg.solve(dP.T,dV.T)
-            # faces=[self.vertices[v] for v in face]
             A_T=solution[0]
-            nonlocal cnt
-            nonlocal vcnt
             limit=12
-            line.append(max(abs(A_T.max()),abs(A_T.min())))
-            if abs(A_T.max())>limit or abs(A_T.min())>limit:
-                if truncated: #abandon
-                    cnt+=1
-                    return None
-                else:
-                    vcnt+=1
-                    return calculate(face,True)
-                    # if c is not None:
-                    #     print('c: ',c)
+            if abs(A_T).max()>limit:
+                if truncated: return None
+                else: return calculate(face,True)
 
-            
             jacobian=A_T[:3,:3].T
             return jacobian
 
@@ -190,7 +164,6 @@ class Field:
             v=self.vertices[v1]
             if v.jacobian is not None:
                 v.jacobian/=face_count[v1]
-        # renderLineChart([line],"jacobian values")
         return self
 
     @staticmethod
