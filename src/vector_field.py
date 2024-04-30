@@ -179,4 +179,4 @@ class Field:
             err_list.append(cur_err)
             err_field.vertices.append(err_vector)
         err/=len(calculated.vertices)
-        return err_field,err,err_list
+        return err,err_field,err_list
