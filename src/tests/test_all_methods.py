@@ -120,13 +120,13 @@ def run_test(original,percent_present,seed,rand,debug=False):
     renderField(expected,i+' edges','faces')
     renderField(sparse_jacobian,i+' sparse')
     renderField(sparse_jacobian,i+' sparse jacobians','jacobian')
-    for field,title in zip(reconstructed_fields,titles):
-      renderField(field,i+' reconstructed with '+title)
+    # for field,title in zip(reconstructed_fields,titles):
+    #   renderField(field,i+' reconstructed with '+title)
     # for err,title in zip(error_list,titles):
     #   renderField(err[1],i+' error with '+title,'vertices-color')
     #   renderHistogram(err[2],i+' '+title+' error histogram')
-    # for jerr,title in zip(curl_error_list,titles):
-    #   renderField(jerr[1],i+' curl error with '+title,'vertices-color')
+    for jerr,title in zip(curl_error_list,titles):
+      renderField(jerr[1],i+' curl error with '+title,'vertices-color')
     # for jerr,title in zip(div_error_list,titles):
     #   renderField(jerr[1],i+' divergence error with '+title,'vertices-color')
 
@@ -200,7 +200,7 @@ def main(expected):
   show_results()
 
 if __name__ == '__main__':
-  single_test=False
+  single_test=True
   random.seed(0)
   expected=init_field(.1)  
   if single_test:
@@ -210,21 +210,3 @@ if __name__ == '__main__':
     render()
   else:
     main(expected)
-
-
-
-# try on new data sets and smaller intervals
-# fix nguyen's method
-# write methodology of each system
-# add curl and divergence
-
-"""
-different controls:
-  I can use only points with or neighboring points with direction | random
-  I can use one | all neighbors in jacobian calculation
-  I can always | sometimes truncate
-
-  -too much truncation reduces usefulness of jacobian
-  -what are the chances user only chooses  
-  -when having values 
-"""

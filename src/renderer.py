@@ -15,11 +15,11 @@ def renderArrows(x,y,vx,vy,title):
   plt.title(title)
   plt.axis('equal')
 
-def renderContours(z,title):
-  x=np.linspace(0,1,len(z))
-
+def renderContours(z:np.ndarray,title):
+  x=np.linspace(0,1,z.shape[1])
+  y=np.linspace(0,1,z.shape[0])
   figures.append(plt.figure(figsize=(4, 4)))
-  plt.contourf(x,x,z,levels=100)
+  plt.contourf(x,y,z,levels=100)
   plt.colorbar()
   plt.xlabel('X-axis')
   plt.ylabel('Y-axis')
