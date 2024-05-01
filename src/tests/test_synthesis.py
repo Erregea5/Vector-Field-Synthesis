@@ -26,7 +26,7 @@ renderField(sparse,'sparse')
 reconstructed=vectorSynthesis(sparse)
 renderField(reconstructed,'reconstructed')
 
-error_field,err=Field.get_Error(reconstructed,expected)
+error_field,err=Field.get_direction_error(reconstructed,expected)
 print('error: ',err)
 renderField(error_field,'error')
 

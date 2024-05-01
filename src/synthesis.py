@@ -47,7 +47,7 @@ def vectorSynthesisWithAugmentedMatrix(field:Field,method='curl',normalized=Fals
   for i in range(len(field.vertices)):
     if field.vertices[i].jacobian is not None: 
       num_physics+=1
-  if method=='jacobian':
+  if method=='jacobian' or method=='curl+div':
     num_physics*=2
 
   num_vertices=len(field.vertices)
@@ -57,27 +57,22 @@ def vectorSynthesisWithAugmentedMatrix(field:Field,method='curl',normalized=Fals
   physics_cnt=0
 
   def set_curl(eq,inv_dP,curl,i,j):
-    w_ij=field.edges[i][j]
-    inv_dP*=w_ij
     eq[i*3+1]+=inv_dP[0]
     eq[i*3]+=-inv_dP[1]
     eq[j*3+1]+=-inv_dP[0]
     eq[j*3]+=inv_dP[1]
 
-    b[num_vertices*3+physics_cnt]+=curl*w_ij
+    b[num_vertices*3+physics_cnt]+=curl
   
   def set_div(eq,inv_dP,div,i,j):
-    w_ij=field.edges[i][j]
-    inv_dP*=w_ij
     eq[i*3]+=inv_dP[0]
     eq[i*3+1]+=inv_dP[1]
     eq[j*3]+=-inv_dP[0]
     eq[j*3+1]+=-inv_dP[1]
 
-    b[num_vertices*3+physics_cnt]+=div*w_ij
+    b[num_vertices*3+physics_cnt]+=div
 
   def set_jacobian(i,j):
-    nonlocal physics_cnt
     vec=field.vertices[i]
     vec_j=field.vertices[j]
     p_i=np.array(vec.pos)
@@ -107,13 +102,22 @@ def vectorSynthesisWithAugmentedMatrix(field:Field,method='curl',normalized=Fals
       for u in range(len(dP)):
         inv_dP[u]=1/dP[u] if dP[u]!=0 else 0
       
+      w_ij=field.edges[i][j]
+      inv_dP*=w_ij
+
       eq=A[num_vertices*3+physics_cnt]
       if method=='curl':
-        set_curl(eq,inv_dP,curl,i,j)
+        set_curl(eq,inv_dP,curl*w_ij,i,j)
       elif method=='div':
-        set_div(eq,inv_dP,div,i,j)
+        set_div(eq,inv_dP,div*w_ij,i,j)
+      elif method=='curl+div': 
+        set_curl(eq,inv_dP,curl*w_ij,i,j)
+        physics_cnt+=1
+        eq=A[num_vertices*3+physics_cnt]
+        set_div(eq,inv_dP,div*w_ij,i,j)
+        physics_cnt-=1
       else: set_jacobian(i,j)
-    if method=='jacobian':
+    if method=='jacobian' or method=='curl+div':
       physics_cnt+=2
     else:
       physics_cnt+=1
@@ -162,7 +166,7 @@ def vectorSynthesisWithAugmentedMatrix(field:Field,method='curl',normalized=Fals
 
   return reconstructed_field
 
-def vectorSynthesis(field:Field,method='merged',actual=None,normalized=False)->Field:
+def vectorSynthesis(field:Field,method='jacobian',actual=None,normalized=False)->Field:
   '''field is a sparse field with or without jacobian information'''
   if len(field.edges)==0:
     field.calculate_edges()

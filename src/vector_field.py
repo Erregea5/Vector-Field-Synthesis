@@ -115,6 +115,11 @@ class Field:
         self.edges=edges
         return self
 
+    def remove_jacobian(self):
+        for v in self.vertices:
+            v.jacobian=None
+        return self
+
     def calculate_jacobian(self):
         def calculate(face,truncated=False):
             truncate=lambda x:x
@@ -137,7 +142,7 @@ class Field:
             A_T=solution[0]
             limit=12
             if abs(A_T).max()>limit:
-                if truncated: return None
+                if truncated: pass#return None
                 else: return calculate(face,True)
 
             jacobian=A_T[:3,:3].T
@@ -167,16 +172,46 @@ class Field:
         return self
 
     @staticmethod
-    def get_Error(calculated,expected):
+    def __get_error(calculated,expected,error_func):
         err_field=Field()
         err_field.faces=calculated.faces
         err_list=[0]*len(calculated.vertices)
         err=0
-        for truth,pred in zip(calculated.vertices,expected.vertices):
-            err_vector=vector.difference(truth,pred)
+        for pred,truth in zip(calculated.vertices,expected.vertices):
+            err_vector=error_func(truth,pred)
             cur_err=sum([x**2 for x in err_vector.dir])
+
             err+=cur_err
             err_list.append(cur_err)
             err_field.vertices.append(err_vector)
         err/=len(calculated.vertices)
         return err,err_field,err_list
+        
+    @staticmethod
+    def get_direction_error(calculated,expected):
+        def error(truth,pred):
+            err_vector=vector.difference(truth,pred)
+            return err_vector
+        return Field.__get_error(calculated,expected,error)
+    
+    @staticmethod
+    def get_curl_error(calculated,expected):
+        def error(truth,pred):
+            truth_curl=truth.jacobian[1,0]-truth.jacobian[0,1]
+            pred_curl=pred.jacobian[1,0]-pred.jacobian[0,1]
+
+            err_vector=vector.copy(truth)
+            err_vector.dir=[0,truth_curl-pred_curl,0]
+            return err_vector
+        return Field.__get_error(calculated,expected,error)
+    
+    @staticmethod
+    def get_div_error(calculated,expected):
+        def error(truth,pred):
+            truth_div=truth.jacobian[0,0]+truth.jacobian[1,1]
+            pred_div=pred.jacobian[0,0]+pred.jacobian[1,1]
+
+            err_vector=vector.copy(truth)
+            err_vector.dir=[truth_div-pred_div,0,0]
+            return err_vector
+        return Field.__get_error(calculated,expected,error)
