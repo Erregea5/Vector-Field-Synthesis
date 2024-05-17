@@ -2,7 +2,6 @@ from vector_field import vector,Field
 import numpy as np
 from renderer import renderField,close,show
 
-
 def Nguyens_method(field,normalized):
   num_vertices=len(field.vertices)
   num_edges=[0]*num_vertices
@@ -11,7 +10,7 @@ def Nguyens_method(field,normalized):
 
   for i in range(num_vertices):
     vec=field.vertices[i]
-    if vec.jacobian is not None and vec.dir:
+    if vec.jacobian is not None and vec.dir is not None:
       known_verts.add(i)
   
   for i in known_verts:
@@ -33,11 +32,13 @@ def Nguyens_method(field,normalized):
   for i in range(num_vertices):
     vec=field.vertices[i]
     vec.jacobian=None
-    if normalized:
-      vec.dir=vector.normed(vec.dir)
-    elif num_edges[i]>0:
-      vec.dir/=num_edges[i]
-      vec.dir=[x for x in vec.dir]
+    
+    if num_edges[i]>0:
+      if normalized:
+        vec.dir=np.array(vector.normed(vec.dir))
+      else:
+        vec.dir/=num_edges[i]
+
   
 def vectorSynthesisWithAugmentedMatrix(field:Field,method='curl',normalized=False)->Field:
   if len(field.edges)==0:
@@ -144,7 +145,7 @@ def vectorSynthesisWithAugmentedMatrix(field:Field,method='curl',normalized=Fals
   
   for i in range(num_vertices):
     vec=field.vertices[i]
-    if vec.dir:
+    if vec.dir is not None:
       coefficients_known(i)
     else:
       coefficients_with_neighbors(i)
@@ -175,8 +176,12 @@ def vectorSynthesis(field:Field,method='jacobian',actual=None,normalized=False)-
     Nguyens_method(field,normalized)
 
   num_vertices=len(field.vertices)
-  A=np.zeros((num_vertices*3,num_vertices*3))
-  b=np.zeros(num_vertices*3)
+  dims=2
+  pos_dims=2
+  # div_dim=3
+  # curl_dim=4
+  A=np.zeros((num_vertices*dims,num_vertices*dims))
+  b=np.zeros(num_vertices*dims)
 
   def coefficients_with_jacobian(i):
     '''equations: \n
@@ -192,13 +197,13 @@ def vectorSynthesis(field:Field,method='jacobian',actual=None,normalized=False)-
       w_ij=edges[j]
       p_j=np.array(vec_j.pos)
       h_i+=p_j*w_ij
-      for u in range(3):
-        A[i*3+u,j*3+u]+=w_ij
+      for u in range(pos_dims):
+        A[i*pos_dims+u,j*pos_dims+u]+=w_ij
 
     val=vec.jacobian@h_i
-    for u in range(3):
-      A[i*3+u,i*3+u]+=-1
-      b[i*3+u]+=val[u]
+    for u in range(pos_dims):
+      A[i*pos_dims+u,i*pos_dims+u]+=-1
+      b[i*pos_dims+u]+=val[u]
 
   def coefficients_with_neighbors(i):
     '''equations:\n
@@ -208,35 +213,35 @@ def vectorSynthesis(field:Field,method='jacobian',actual=None,normalized=False)-
     vec=field.vertices[i]
     edges=field.edges[i]
     p_i=np.array(vec.pos)
-    val=np.zeros(3)
+    val=np.zeros(pos_dims)
     m=0
 
     for j in edges:
       vec_j=field.vertices[j]
-      if vec_j.jacobian is not None and vec_j.dir:
+      if vec_j.jacobian is not None and vec_j.dir is not None:
         w_ij=edges[j]
         p_j=np.array(vec_j.pos)      
-        val+=w_ij*(vec_j.jacobian@(p_j-p_i))
+        val+=w_ij*(vec_j.jacobian@(p_j-p_i))[:pos_dims]
         m+=w_ij
-        for u in range(3):
-          A[i*3+u,j*3+u]+=w_ij
+        for u in range(pos_dims):
+          A[i*pos_dims+u,j*pos_dims+u]+=w_ij
     
     if m==0:
       m=1
       for j in edges:
         w_ij=edges[j]
-        for u in range(3):
-          A[i*3+u,j*3+u]+=w_ij
+        for u in range(pos_dims):
+          A[i*pos_dims+u,j*pos_dims+u]+=w_ij
 
-    for u in range(3):
-      A[i*3+u,i*3+u]=-m
-      b[i*3+u]=val[u]
+    for u in range(pos_dims):
+      A[i*pos_dims+u,i*pos_dims+u]=-m
+      b[i*pos_dims+u]=val[u]
   
   def coefficients_known(i):
     '''equation: v_i = 1 * v_i'''
-    for u in range(3):
-      A[i*3+u,i*3+u]=1
-      b[i*3+u]=field.vertices[i].dir[u]
+    for u in range(pos_dims):
+      A[i*pos_dims+u,i*pos_dims+u]=1
+      b[i*pos_dims+u]=field.vertices[i].dir[u]
 
   def check(i,reconstructed):
     vec_i=reconstructed.vertices[i]
@@ -254,7 +259,7 @@ def vectorSynthesis(field:Field,method='jacobian',actual=None,normalized=False)-
 
   for i in range(num_vertices):
     vec=field.vertices[i]
-    if vec.dir:
+    if vec.dir is not None:
       coefficients_known(i)
     elif vec.jacobian is not None:
       coefficients_with_neighbors(i)
@@ -274,7 +279,8 @@ def vectorSynthesis(field:Field,method='jacobian',actual=None,normalized=False)-
   reconstructed_field.edges=field.edges
   for i in range(num_vertices):
     reconstructed_field.vertices.append(field.vertices[i].copy())
-    dir=[c for c in x[i*3:(i+1)*3]]
+    dir=[c for c in x[i*pos_dims:(i+1)*pos_dims]]
+    dir.append(0)
     if normalized:
       dir=vector.normed(dir)
     reconstructed_field.vertices[i].dir=dir

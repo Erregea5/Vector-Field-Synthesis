@@ -3,30 +3,37 @@ import numpy as np
 
 figures=[]
 
-def renderArrows(x,y,vx,vy,title):
-  scaling_factor = 0.05
+# num_colors=101
+# colors=['']*num_colors
+# for i in range(num_colors):
+#   r=(i)/num_colors
+#   colors[i]=(1,1-r,1-r)
+
+def renderArrows(x,y,vx,vy,title,newFigure=True):
+  scaling_factor =.05
   vx_scaled = vx * scaling_factor
   vy_scaled = vy * scaling_factor
-
-  figures.append(plt.figure(figsize=(4, 4)))
+  if newFigure:
+    figures.append(plt.figure(figsize=(4, 4)))
   plt.quiver(x, y, vx_scaled, vy_scaled, pivot='middle', angles='xy', scale_units='xy', scale=1)
   plt.xlabel('X-axis')
   plt.ylabel('Y-axis')
   plt.title(title)
   plt.axis('equal')
 
-def renderContours(z:np.ndarray,title):
-  x=np.linspace(0,1,z.shape[1])
-  y=np.linspace(0,1,z.shape[0])
+def renderContours(x,y,z:np.ndarray,title):
+  x=np.linspace(0,x.max(),z.shape[1])
+  y=np.linspace(0,y.max(),z.shape[0])
+  
   figures.append(plt.figure(figsize=(4, 4)))
-  plt.contourf(x,y,z,levels=100)
+  plt.contourf(x,y,z,levels=100,cmap='Reds')
   plt.colorbar()
   plt.xlabel('X-axis')
   plt.ylabel('Y-axis')
   plt.title(title)
-  plt.axis('equal')
+  # plt.axis('equal')
 
-def renderVertices(field,title,color=False):
+def renderVertices(field,title,color=False,usePreviousFigure=False):
   vertices = field.vertices
   x=np.zeros(len(vertices))
   y,vx,vy=x.copy(),x.copy(),x.copy()
@@ -38,6 +45,7 @@ def renderVertices(field,title,color=False):
     else:
       vx[i]=vertices[i].dir[0]
       vy[i]=vertices[i].dir[1]
+
   if color:
     size_x=len(set(x))
     size_y=len(set(y))
@@ -50,9 +58,9 @@ def renderVertices(field,title,color=False):
       px=int((x[i]-x.min())*x_inv_step)
       py=int((y[i]-y.min())*y_inv_step)
       points[px,py]=(vx[i]**2+vy[i]**2)**.5
-    renderContours(points,title+' color')
+    renderContours(x,y,points,title+' color')
   else:
-    renderArrows(x,y,vx,vy,title)
+    renderArrows(x,y,vx,vy,title,not usePreviousFigure)
 
 def renderJacobian(field,title,color=False):
   vertices = field.vertices
@@ -84,8 +92,8 @@ def renderJacobian(field,title,color=False):
       div[px,py]=dvx_dx[i]+dvy_dy[i]
       curl[px,py]=dvy_dx[i]-dvx_dy[i]
 
-    renderContours(div.T,title+' divergence')
-    renderContours(curl.T,title+' curl')
+    renderContours(x,y,div.T,title+' divergence')
+    renderContours(x,y,curl.T,title+' curl')
   else:
     renderArrows(x,y,dvx_dx,dvx_dy,title+' dvx')
     renderArrows(x,y,dvy_dx,dvy_dy,title+' dvy')
@@ -106,11 +114,11 @@ def renderFaces(field,title):
   plt.title(title)
   plt.axis('equal')
 
-def renderField(field,title,render='vertices'):
+def renderField(field,title,render='vertices',usePreviousFigure=False):
   if render=='vertices':
-    renderVertices(field,title)
+    renderVertices(field,title,False,usePreviousFigure)
   elif render=='vertices-color':
-    renderVertices(field,title,True)
+    renderVertices(field,title,True,usePreviousFigure)
   elif render=='faces':
     renderFaces(field,title)
   elif render=='jacobian':

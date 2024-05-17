@@ -5,8 +5,8 @@ from renderer import renderLineChart
 
 class vector:
     def __init__(self,arr=[]) -> None:
-        self.pos=arr[0:3] if len(arr)>=3 else None
-        self.dir=arr[3:6] if len(arr)>=6 else None
+        self.pos=np.array(arr[0:3]) if len(arr)>=3 else None
+        self.dir=np.array(arr[3:6]) if len(arr)>=6 else None
         self.jacobian=np.array(arr[6:15]).reshape((3,3)) if len(arr)>=15 else None
     
     def copy(self):
@@ -24,7 +24,7 @@ class vector:
     
     @staticmethod
     def difference(vec1,vec2):
-        if vec1.dir and vec2.dir:
+        if vec1.dir is not None and vec2.dir is not None:
             dir=[(v1-v2) for v1,v2 in zip(vec1.dir,vec2.dir)]
             return vector([*vec1.pos,*dir])
         return vector(vec1.pos)

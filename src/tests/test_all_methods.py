@@ -1,4 +1,3 @@
-import multiprocessing.pool
 import os,sys
 src_path=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_path=os.path.dirname(src_path)+'\\data\\'
@@ -98,7 +97,7 @@ def run_test(original,percent_present,seed,rand,debug=False):
       time_taken.append(time.time()-time0)
       continue
     time0=time.time()
-    reconstructed_fields.append(vectorSynthesis(field,method))
+    reconstructed_fields.append(vectorSynthesis(field,method,None,True))
     time_taken.append(time.time()-time0)
 
   curl_error_list=[]
@@ -117,16 +116,17 @@ def run_test(original,percent_present,seed,rand,debug=False):
 
   def render(i=''):
     renderField(expected,i+' original')
-    renderField(expected,i+' edges','faces')
+    # renderField(expected,i+' edges','faces')
     renderField(sparse_jacobian,i+' sparse')
-    renderField(sparse_jacobian,i+' sparse jacobians','jacobian')
+    # renderField(sparse_jacobian,i+' sparse jacobians','jacobian')
     # for field,title in zip(reconstructed_fields,titles):
     #   renderField(field,i+' reconstructed with '+title)
-    # for err,title in zip(error_list,titles):
-    #   renderField(err[1],i+' error with '+title,'vertices-color')
+    for field,err,title in zip(reconstructed_fields,error_list,titles):
+      renderField(err[1],i+' error with '+title,'vertices-color')
+      renderField(field,i+' reconstructed with '+title,'vertices',True)
     #   renderHistogram(err[2],i+' '+title+' error histogram')
-    for jerr,title in zip(curl_error_list,titles):
-      renderField(jerr[1],i+' curl error with '+title,'vertices-color')
+    # for jerr,title in zip(curl_error_list,titles):
+    #   renderField(jerr[1],i+' curl error with '+title,'vertices-color')
     # for jerr,title in zip(div_error_list,titles):
     #   renderField(jerr[1],i+' divergence error with '+title,'vertices-color')
 
@@ -138,7 +138,7 @@ def run_test(original,percent_present,seed,rand,debug=False):
   return err_values,time_taken,render
 
 def init_field(percent_vert_present=.1):
-  original = Field(data_path+"crayply.ply")
+  original = Field(data_path+"bnoise.ply")
   expected=Field()
   for vertex in original.vertices:
     if random.random()<percent_vert_present:
@@ -151,7 +151,7 @@ def main(expected):
   seed=0
   total_tests=50
   # on my machine 2 threads can run on a core so i run half of the compute on another thread
-  num_extra_threads=1
+  num_extra_threads=0
   tests_per_thread=total_tests//(num_extra_threads+1)
 
   errors=[[0]*total_tests for _ in range(len(titles))]
@@ -163,7 +163,7 @@ def main(expected):
     try:
       rand=random.Random()
       for i in range(start,end): 
-        percent_present=.01*(i+1)
+        percent_present=.01*(i+3)
         # print('iteration: ', i)
         
         new_errors,new_time_taken,render=run_test(expected,percent_present,seed,rand)
